@@ -1,23 +1,26 @@
 # ------------------------------------------------------------
-#  LZ77 Compression / Decompression Tool for input string
+#  LZ77 Compression / Decompression Tool
 #
-#  Simple CLI-based implementation of LZ77 algorithm.
-#  - Supports compression and decompression
-#  - Customizable sliding window size
+#  A simple and readable Python implementation of the LZ77 algorithm.
+#  Works directly from the command line — you can compress or decompress
+#  any input string. No external libraries are used.
 #
 #  Date: October 2025
 # ------------------------------------------------------------
 
 class LZ77:
     def __init__(self, window_size=20):
-        """Initialize compressor with a given window size."""
+        """Set up the compressor with a specific sliding window size."""
         self.window_size = window_size
 
+    # ------------------------------------------------------------
     def compress(self, data):
         """
-        Compress input text using LZ77.
-        Returns a list of (offset, length, next_char) tuples.
-        Time Complexity: O(n * w) — n = input length, w = window size.
+        Compress the given text using a basic LZ77 algorithm.
+        It searches the previous 'window_size' characters for the
+        longest possible match, then encodes it as (offset, length, next_char).
+
+        Time Complexity: O(n * w)
         Space Complexity: O(n + w)
         """
         compressed = []
@@ -25,35 +28,38 @@ class LZ77:
         n = len(data)
 
         while i < n:
-            best_length = 0
-            best_offset = 0
+            match_len = 0
+            match_dist = 0
 
-            # Sliding window range
+            # Define the sliding window
             start = max(0, i - self.window_size)
             window = data[start:i]
             lookahead = data[i:i + self.window_size]
 
-            # Try to find the longest match in the window
+            # Try to find the longest substring match
             for length in range(1, len(lookahead) + 1):
                 substring = lookahead[:length]
                 pos = window.rfind(substring)
-
                 if pos != -1:
-                    best_offset = i - (start + pos)
-                    best_length = length
+                    match_dist = i - (start + pos)
+                    match_len = length
                 else:
                     break
 
-            # Next character after the match
-            next_char = data[i + best_length] if i + best_length < n else ''
-            compressed.append((best_offset, best_length, next_char))
-            i += best_length + 1
+            next_char = data[i + match_len] if i + match_len < n else ''
+            compressed.append((match_dist, match_len, next_char))
+            i += match_len + 1
 
         return compressed
 
+    # ------------------------------------------------------------
     def decompress(self, compressed_data):
         """
-        Rebuild original text from list of (offset, length, next_char).
+        Reconstruct the original text from the compressed tuples.
+
+        Each tuple is (offset, length, next_char), where 'offset' and 'length'
+        define how many characters to copy from previously decompressed text.
+
         Time Complexity: O(n)
         Space Complexity: O(n)
         """
@@ -61,26 +67,33 @@ class LZ77:
 
         for offset, length, next_char in compressed_data:
             if offset == 0 and length == 0:
-                # Literal character, no match
+                # Literal character, nothing to copy
                 output.append(next_char)
             else:
-                # Copy 'length' characters starting 'offset' back
+                # Copy substring from previously decompressed text
                 start = len(output) - offset
-                for i in range(length):
-                    output.append(output[start + i])
+                for j in range(length):
+                    output.append(output[start + j])
                 output.append(next_char)
 
         return ''.join(output)
 
+
+
+
+
+
+
+    # ------------------------------------------------------------
     def safe_parse_list(self, raw):
         """
-        Parse a manual list of tuples entered by the user safely.
-        Example input:
+        Parse user input like:
             (0,0,'A'), (0,0,'B'), (2,1,'A')
-        Returns:
+        into:
             [(0,0,'A'), (0,0,'B'), (2,1,'A')]
 
-        Parse user input into a list of tuples safely (no eval).
+        Does not use eval(), so it’s safe to take direct input.
+
         Time Complexity: O(m)
         Space Complexity: O(m)
         """
@@ -89,49 +102,60 @@ class LZ77:
             if raw.startswith("[") and raw.endswith("]"):
                 raw = raw[1:-1]
 
-            tuples = []
-            chunks = []
-            buf = ""
-            in_paren = False
+            tuples, chunk, inside = [], "", False
 
             for ch in raw:
                 if ch == '(':
-                    in_paren = True
-                    buf = ""
-                buf += ch
+                    inside = True
+                    chunk = ""
+                chunk += ch
                 if ch == ')':
-                    in_paren = False
-                    chunks.append(buf)
-                    buf = ""
+                    inside = False
+                    tuples.append(chunk)
+                    chunk = ""
 
-            for chunk in chunks:
-                parts = chunk.strip("() ").split(",")
+            result = []
+            for t in tuples:
+                parts = t.strip("() ").split(",")
                 if len(parts) == 3:
                     offset = int(parts[0])
                     length = int(parts[1])
                     char = parts[2].strip().strip("'\"")
-                    tuples.append((offset, length, char))
-
-            return tuples
+                    result.append((offset, length, char))
+            return result
         except Exception:
-            print("Couldn’t parse compressed data properly.")
+            print("Couldn’t parse compressed data correctly.")
             return []
 
+
+
+
+
+
+
+    # ------------------------------------------------------------
     def menu(self):
-        """CLI menu for compressing and decompressing text."""
+        """
+        Command-line interface.
+        Lets you pick between compression and decompression modes.
+
+        Time Complexity: O(1)
+        Space Complexity: O(1)
+        """
         print("===== LZ77 Compression Tool =====")
         print("1. Compress text")
         print("2. Decompress data")
+        print()
 
         choice = input("Choose (1 or 2): ").strip()
         print()
 
         if choice == "1":
-            # --- Compression ---
+            # ---------------- Compression ----------------
             try:
                 text = input("Enter text to compress: ").strip()
                 if not text:
-                    print(" Input text cannot be empty.")
+                    print("Input text cannot be empty.")
                     return
 
                 w = input("Enter window size: ").strip()
@@ -142,16 +166,16 @@ class LZ77:
                 self.window_size = int(w)
                 compressed = self.compress(text)
 
-                print("\nCompressed Output:")
+                print("\nCompressed output:")
                 for t in compressed:
                     print(t)
                 print("\nCopy this list for decompression later.")
 
             except Exception as e:
-                print("Compression error:", e)
+                print("Compression failed:", e)
 
         elif choice == "2":
-            # --- Decompression ---
+            # ---------------- Decompression ----------------
             try:
                 print("Enter compressed data as tuples:")
                 print("Example: (0,0,'A'), (0,0,'B'), (2,1,'A'), (3,2,'B')\n")
@@ -167,25 +191,24 @@ class LZ77:
                     return
 
                 self.window_size = int(w)
-                data = self.safe_parse_list(raw)
+                parsed = self.safe_parse_list(raw)
 
-                if not data:
+                if not parsed:
                     print("Could not parse the input data.")
                     return
 
-                decompressed = self.decompress(data)
+                decompressed = self.decompress(parsed)
                 print("\nDecompressed text:\n", decompressed)
 
             except Exception as e:
-                print("Decompression error:", e)
+                print("Decompression failed:", e)
 
         else:
-            print("Invalid choice. Enter 1 or 2.")
+            print("Invalid choice. Please enter 1 or 2.")
 
-
-
+# ---------------- Run program ----------------
 if __name__ == "__main__":
     try:
         LZ77().menu()
     except KeyboardInterrupt:
-        print("\nProgram stopped by user.")
+        print("\nStopped by user.")
