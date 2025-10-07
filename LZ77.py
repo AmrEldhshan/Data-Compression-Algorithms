@@ -1,10 +1,7 @@
 # ------------------------------------------------------------
 #  LZ77 Compression / Decompression Tool
 #
-#  A simple and readable Python implementation of the LZ77 algorithm.
-#  Works directly from the command line — you can compress or decompress
-#  any input string. No external libraries are used.
-#
+#  A simple and readable Python implementation of the LZ77 algorithm.#
 #  Date: October 2025
 # ------------------------------------------------------------
 
@@ -14,6 +11,9 @@ class LZ77:
         self.window_size = window_size
 
     # ------------------------------------------------------------
+
+
+    
     def compress(self, data):
         """
         Compress the given text using a basic LZ77 algorithm.
