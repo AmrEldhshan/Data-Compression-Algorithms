@@ -13,45 +13,57 @@ class LZ77:
     # ------------------------------------------------------------
 
 
-    
+
     def compress(self, data):
         """
-        Compress the given text using a basic LZ77 algorithm.
-        It searches the previous 'window_size' characters for the
-        longest possible match, then encodes it as (offset, length, next_char).
-
-        Time Complexity: O(n * w)
-        Space Complexity: O(n + w)
+        Exact equivalent of your first LZ77 implementation,
+        rewritten inside the class structure.
         """
         compressed = []
         i = 0
-        n = len(data)
+        text_length = len(data)
 
-        while i < n:
-            match_len = 0
-            match_dist = 0
+        while i < text_length:
+            start_window = max(0, i - self.window_size)
+            end_lookahead = min(text_length, i + self.window_size)
 
-            # Define the sliding window
-            start = max(0, i - self.window_size)
-            window = data[start:i]
-            lookahead = data[i:i + self.window_size]
+            best_offset = 0
+            best_length = 0
 
-            # Try to find the longest substring match
-            for length in range(1, len(lookahead) + 1):
-                substring = lookahead[:length]
-                pos = window.rfind(substring)
-                if pos != -1:
-                    match_dist = i - (start + pos)
-                    match_len = length
-                else:
-                    break
+            # Check all possible starting points in the window
+            for j in range(start_window, i):
+                length = 0
 
-            next_char = data[i + match_len] if i + match_len < n else ''
-            compressed.append((match_dist, match_len, next_char))
-            i += match_len + 1
+                # First matching loop
+                while (i + length < text_length) and (data[j + length] == data[i + length]):
+                    length += 1
+                    if length >= self.window_size:
+                        break
+                    if j + length >= i:
+                        break
+
+                # Reset and check again (this double-check matters!)
+                length = 0
+                while (i + length < text_length) and (data[j + length] == data[i + length]):
+                    length += 1
+                    if length >= self.window_size:
+                        break
+
+                # Update if better match
+                if length > best_length:
+                    best_length = length
+                    best_offset = i - j
+
+            # Emit token
+            if best_length == 0:
+                compressed.append((0, 0, data[i]))
+                i += 1
+            else:
+                next_char = data[i + best_length] if (i + best_length) < text_length else ''
+                compressed.append((best_offset, best_length, next_char))
+                i += best_length + (1 if next_char else 0)
 
         return compressed
-
     # ------------------------------------------------------------
     def decompress(self, compressed_data):
         """
