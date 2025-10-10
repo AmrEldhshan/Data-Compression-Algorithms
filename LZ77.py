@@ -2,7 +2,8 @@
 #  LZ77 Compression / Decompression Tool
 #
 #  A simple and readable Python implementation of the LZ77 algorithm.#
-#  Date: October 2025
+#  Date: 10 October 2025 
+#  Version 2 
 # ------------------------------------------------------------
 
 class LZ77:
