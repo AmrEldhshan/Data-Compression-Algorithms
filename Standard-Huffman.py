@@ -9,11 +9,14 @@ class Node(namedtuple("Node", ["char", "freq", "left", "right"])):
 
 
 class HuffmanTree:
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str = None):
         self.file_path = file_path
-        self.text = self._read_file_text()
+        self.text = ""
         self.root = None
-        self.codes = {}  # store generated codes in a dictionary
+        self.codes = {}
+        if file_path:
+            self.text = self._read_file_text()
+
 
     # -------------------------------------------------------------
     #               read file & build tree
@@ -113,6 +116,78 @@ class HuffmanTree:
 
         print(f"File compressed successfully: {output_path}")
 
+
+
+    # -------------------------------------------------------------
+    #                   Decompression Section
+    # -------------------------------------------------------------
+def decompress_file(self, compressed_path: str, output_path: str = "Decompressed.txt"):
+    """Decompress a Huffman-compressed file back into its original content."""
+
+    # --- Step 1: Make sure the compressed file exists ---
+    if not os.path.exists(compressed_path):
+        print(f"The file '{compressed_path}' does not exist. Please check the name and try again.")
+        return
+
+    try:
+        with open(compressed_path, "rb") as file:
+            # Read header size (first 4 bytes)
+            header_size = int.from_bytes(file.read(4), "big")
+
+            # Read and decode the frequency table (JSON format)
+            header_data = file.read(header_size)
+            freq_table = json.loads(header_data.decode("utf-8"))
+
+            # Remaining bytes are the actual compressed data
+            compressed_bytes = file.read()
+
+    except Exception as e:
+        print(f"Failed to read compressed file '{compressed_path}': {e}")
+        return
+
+    # --- Step 2: Rebuild the Huffman Tree using the frequency table ---
+    try:
+        self.text = "".join(char * freq for char, freq in freq_table.items())
+        self.build_huffman_tree()
+        self.generate_codes()
+    except Exception as e:
+        print(f"Error rebuilding Huffman tree: {e}")
+        return
+
+    # --- Step 3: Convert byte data back to bit string ---
+    try:
+        bit_string = ''.join(f'{byte:08b}' for byte in compressed_bytes)
+        padding_info = int(bit_string[:8], 2)
+        actual_bits = bit_string[8:len(bit_string) - padding_info]
+    except Exception as e:
+        print(f"Error decoding bit stream: {e}")
+        return
+
+    # --- Step 4: Decode bits back into characters ---
+    try:
+        reverse_codes = {v: k for k, v in self.codes.items()}
+        decoded_text = []
+        current_bits = ""
+
+        for bit in actual_bits:
+            current_bits += bit
+            if current_bits in reverse_codes:
+                decoded_text.append(reverse_codes[current_bits])
+                current_bits = ""
+
+        decoded_output = ''.join(decoded_text)
+
+        # Write the decompressed text to file
+        with open(output_path, "w", encoding="utf-8") as out_file:
+            out_file.write(decoded_output)
+
+        print(f"File decompressed successfully: {output_path}")
+
+    except Exception as e:
+        print(f"Error during decompression process: {e}")
+
+
+
 def display_compressed_data_bits(file_path: str):
     """Show only the bitstream part (skip header)."""
     with open(file_path, "rb") as file:
@@ -133,17 +208,84 @@ def display_compressed_data_bits(file_path: str):
 # -------------------------------------------------------------
 #                           main
 # -------------------------------------------------------------
-if __name__ == "__main__":
-    input_path = "Standard-Huffman-Testing.txt"
-    output_path = "Compressed.bin"
 
-    huffman = HuffmanTree(input_path)
-    huffman.write_compressed_file(output_path)
-    print("-------------------------------------")
-    # Display generated codes
-    print("Generated Huffman Codes:")
-    for char, code in huffman.codes.items():
-        print(repr(char), ":", code)
-    print("-------------------------------------")
-    # Display binary content of compressed file
-    display_compressed_data_bits(output_path)
+
+# -------------------------------------------------------------
+#                       Menu System
+# -------------------------------------------------------------
+import os
+import traceback
+
+def main_menu():
+    print("\n=== Huffman Compression Menu ===")
+    print("1. Compress a file")
+    print("2. Decompress a file")
+    print("3. Exit")
+    print("--------------------------------")
+
+    choice = input("Enter your choice (default = 1): ").strip() or "1"
+
+    if choice == "1":
+        input_path = input("Enter input file path (default = Standard-Huffman-Testing.txt): ").strip() or "Standard-Huffman-Testing.txt"
+        output_path = input("Enter output compressed file path (default = Compressed.bin): ").strip() or "Compressed.bin"
+
+        # Defensive check: file must exist
+        if not os.path.exists(input_path):
+            print(f"Error: The file '{input_path}' does not exist.")
+            return main_menu()
+
+        try:
+            huffman = HuffmanTree(input_path)
+            huffman.write_compressed_file(output_path)
+            print("-------------------------------------")
+            print("Generated Huffman Codes:")
+            for char, code in huffman.codes.items():
+                print(repr(char), ":", code)
+            print("-------------------------------------")
+            display_compressed_data_bits(output_path)
+        except Exception as e:
+            print("Compression failed:")
+            print(traceback.format_exc())
+
+    elif choice == "2":
+        compressed_path = input("Enter compressed file path (default = Compressed.bin): ").strip() or "Compressed.bin"
+        output_path = input("Enter output decompressed file path (default = Decompressed.txt): ").strip() or "Decompressed.txt"
+
+        # Defensive check: compressed file must exist
+        if not os.path.exists(compressed_path):
+            print(f"Error: The file '{compressed_path}' does not exist.")
+            return main_menu()
+
+        try:
+            huffman = HuffmanTree()
+            huffman.decompress_file(compressed_path, output_path)
+        except Exception as e:
+            print("Decompression failed:")
+            print(traceback.format_exc())
+
+    elif choice == "3":
+        print("Exiting program.")
+        return
+
+    else:
+        print("Invalid choice! Please enter 1, 2, or 3.")
+
+    # Restart menu after operation
+    main_menu()
+
+if __name__ == "__main__":
+    main_menu()
+
+    # input_path = "Standard-Huffman-Testing.txt"
+    # output_path = "Compressed.bin"
+
+    # huffman = HuffmanTree(input_path)
+    # huffman.write_compressed_file(output_path)
+    # print("-------------------------------------")
+    # # Display generated codes
+    # print("Generated Huffman Codes:")
+    # for char, code in huffman.codes.items():
+    #     print(repr(char), ":", code)
+    # print("-------------------------------------")
+    # # Display binary content of compressed file
+    # display_compressed_data_bits(output_path)
